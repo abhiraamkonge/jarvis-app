@@ -30,7 +30,7 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
             return@withContext
         }
 
-        val model = Prefs.get(ctx, Prefs.MODEL, "gemini-2.5-flash")
+        val model = Prefs.getString(Prefs.MODEL, "gemini-3.8-flash")
         val maxSteps = Prefs.get(ctx, Prefs.MAX_STEPS, "25").toIntOrNull() ?: 25
         val replyLang = Prefs.get(ctx, Prefs.REPLY_LANG, "English")
         val system = SYSTEM.replace("{LANG}", replyLang)
