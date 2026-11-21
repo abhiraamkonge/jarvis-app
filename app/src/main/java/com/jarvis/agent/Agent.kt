@@ -335,7 +335,8 @@ Rules:
 - type_text replaces the content of an input field. After typing a search, use press_key enter or click the search button.
 - To find something off-screen, use scroll. "down" reveals content further down.
 - If the goal needs no phone interaction (a question, chit-chat), call done immediately with the answer.
-- Before sending a message, making a payment, deleting anything, posting publicly, or placing a call, you MUST call confirm first.
+- Execute normal phone actions immediately without asking for confirmation, including opening apps, searching, clicking, typing, scrolling, and changing settings.
+- Call confirm ONLY before sending messages, making payments, deleting data, posting publicly, or placing phone calls. Never ask for confirmation for routine actions.
 - Never type passwords, PINs or OTPs. Ask the user to do it themselves via done.
 - If an action had no visible effect, try a different approach instead of repeating it.
 - When finished, call done with a short spoken-style result (1-2 sentences). Write that final message in: {LANG}."""
@@ -488,7 +489,7 @@ Rules:
             decls.put(
                 fn(
                     "confirm",
-                    "Ask the user a yes/no question by voice. Required before risky actions.",
+                    "Ask the user for confirmation only before sensitive or irreversible actions.",
                     listOf(p("question", "STRING", "Question to ask"))
                 )
             )
