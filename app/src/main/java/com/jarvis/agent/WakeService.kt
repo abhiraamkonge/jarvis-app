@@ -185,8 +185,8 @@ class WakeService : Service() {
             wakeWord?.start { score ->
                 Log.d("WakeService", "Wake word detected: $score")
 
-                if (!busy) {
-                    startSession(null)
+                mainHandler.post {
+                    if (!busy) startSession(null)
                 }
             }
 
@@ -211,8 +211,8 @@ class WakeService : Service() {
             wakeWord?.start { score ->
                 Log.d("WakeService", "Wake word detected: $score")
 
-                if (!busy) {
-                    startSession(null)
+                mainHandler.post {
+                    if (!busy) startSession(null)
                 }
             }
 
@@ -239,7 +239,8 @@ class WakeService : Service() {
                     Log.e("WakeService", "Could not stop wake detector", e)
                 }
 
-                delay(300)
+                // Give the wake-word audio recorder a moment to release the microphone.
+                delay(200)
 
                 var goal = typedGoal
 
@@ -336,23 +337,41 @@ class WakeService : Service() {
                     object : RecognitionListener {
 
                         override fun onResults(results: Bundle?) {
-                            finish(
-                                results?.getStringArrayList(
-                                    SpeechRecognizer.RESULTS_RECOGNITION
-                                )?.firstOrNull()
+                            val matches = results?.getStringArrayList(
+                                SpeechRecognizer.RESULTS_RECOGNITION
                             )
+                            Log.d("WakeService", "Speech results: $matches")
+                            finish(matches?.firstOrNull())
                         }
 
                         override fun onError(error: Int) {
+                            Log.w("WakeService", "Speech recognition error: ${speechErrorName(error)}")
                             finish(null)
                         }
 
-                        override fun onReadyForSpeech(params: Bundle?) {}
-                        override fun onBeginningOfSpeech() {}
+                        override fun onReadyForSpeech(params: Bundle?) {
+                            show("🎙 Speak now")
+                        }
+
+                        override fun onBeginningOfSpeech() {
+                            show("🎙 Hearing you…")
+                        }
+
                         override fun onRmsChanged(rmsdB: Float) {}
                         override fun onBufferReceived(buffer: ByteArray?) {}
-                        override fun onEndOfSpeech() {}
-                        override fun onPartialResults(partialResults: Bundle?) {}
+                        override fun onEndOfSpeech() {
+                            show("⏳ Processing speech…")
+                        }
+
+                        override fun onPartialResults(partialResults: Bundle?) {
+                            val partial = partialResults
+                                ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                                ?.firstOrNull()
+                            if (!partial.isNullOrBlank()) {
+                                show("🎙 $partial")
+                            }
+                        }
+
                         override fun onEvent(eventType: Int, params: Bundle?) {}
                     }
                 )
@@ -375,13 +394,48 @@ class WakeService : Service() {
                         lang
                     )
                     .putExtra(
+                        RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                        lang
+                    )
+                    .putExtra(
+                        RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                        true
+                    )
+                    .putExtra(
                         RecognizerIntent.EXTRA_MAX_RESULTS,
-                        1
+                        3
+                    )
+                    // End promptly after a natural pause instead of waiting too long.
+                    .putExtra(
+                        RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS,
+                        900L
+                    )
+                    .putExtra(
+                        RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS,
+                        500L
                     )
 
-                rec.startListening(i)
+                try {
+                    rec.startListening(i)
+                } catch (e: Exception) {
+                    Log.e("WakeService", "Could not start speech recognition", e)
+                    finish(null)
+                }
             }
         }
+    }
+
+    private fun speechErrorName(error: Int): String = when (error) {
+        SpeechRecognizer.ERROR_AUDIO -> "audio"
+        SpeechRecognizer.ERROR_CLIENT -> "client"
+        SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> "permission"
+        SpeechRecognizer.ERROR_NETWORK -> "network"
+        SpeechRecognizer.ERROR_NETWORK_TIMEOUT -> "network timeout"
+        SpeechRecognizer.ERROR_NO_MATCH -> "no match"
+        SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> "recognizer busy"
+        SpeechRecognizer.ERROR_SERVER -> "server"
+        SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> "speech timeout"
+        else -> "unknown ($error)"
     }
 
     private suspend fun speakOut(text: String) =
