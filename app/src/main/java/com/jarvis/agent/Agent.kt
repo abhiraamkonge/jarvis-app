@@ -35,7 +35,7 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
             return@withContext
         }
 
-        val model = Prefs.get(ctx, Prefs.MODEL, "gemini-2.5-flash")
+        val model = Prefs.get(ctx, Prefs.MODEL, "gemini-3.8-flash")
         val maxSteps = Prefs.get(ctx, Prefs.MAX_STEPS, "25").toIntOrNull() ?: 25
         val replyLang = Prefs.get(ctx, Prefs.REPLY_LANG, "English")
         val system = SYSTEM.replace("{LANG}", replyLang)
@@ -83,17 +83,10 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
                 GeminiClient.step(
                     apiKey, model, system, prompt, shot, TOOLS
                 )
-            } catch (e: Exception) {
-    android.util.Log.e(
-        "JarvisGemini",
-        "Gemini request failed",
-        e
-    )
+         } catch (e: Exception) {
+    android.util.Log.e("JarvisGemini", "Gemini request failed", e)
 
-    io.speak(
-        "Gemini request failed. Check the application logs for the error details."
-    )
-
+    io.speak("Gemini request failed. Check the application logs.")
     return@withContext
 }
 
