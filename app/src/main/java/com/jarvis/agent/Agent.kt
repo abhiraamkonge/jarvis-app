@@ -11,6 +11,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.Locale
 
 /** The brain loop: read screen -> ask Gemini for ONE action -> execute -> repeat until done. */
 class Agent(private val ctx: Context, private val io: AgentIO) {
@@ -24,13 +25,17 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
     private var wantShot = false
 
     suspend fun run(goal: String) = withContext(Dispatchers.IO) {
+        // Run supported local commands first. They do not need Gemini or internet.
+        if (runOfflineCommand(goal)) return@withContext
+
+        // Only commands that need the AI agent reach this point.
         val apiKey = Prefs.get(ctx, Prefs.GEMINI_KEY)
         if (apiKey.isBlank()) {
-            io.speak("Please add your Gemini API key in the Jarvis app.")
+            io.speak("I cannot handle that command offline. Add your Gemini API key to use online AI.")
             return@withContext
         }
 
-        val model = Prefs.get(ctx, Prefs.MODEL, "gemini-3.8-flash")
+        val model = Prefs.get(ctx, Prefs.MODEL, "gemini-2.5-flash")
         val maxSteps = Prefs.get(ctx, Prefs.MAX_STEPS, "25").toIntOrNull() ?: 25
         val replyLang = Prefs.get(ctx, Prefs.REPLY_LANG, "English")
         val system = SYSTEM.replace("{LANG}", replyLang)
@@ -74,9 +79,16 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
 
             io.status("Step $step/$maxSteps")
 
-            val call = GeminiClient.step(
-                apiKey, model, system, prompt, shot, TOOLS
-            )
+            val call = try {
+                GeminiClient.step(
+                    apiKey, model, system, prompt, shot, TOOLS
+                )
+            } catch (e: Exception) {
+                io.speak(
+                    "I couldn't connect to Gemini. Please check your internet connection and try again."
+                )
+                return@withContext
+            }
 
             if (call.name == "done") {
                 io.speak(call.args.optString("message", "Done."))
@@ -164,6 +176,88 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
 
             else -> "Unknown tool ${c.name}"
         }
+    }
+
+    /**
+     * Handles simple commands entirely on the phone.
+     * Returns true when a local command was recognized.
+     */
+    private suspend fun runOfflineCommand(goal: String): Boolean {
+        val q = goal.lowercase(Locale.ROOT)
+            .trim()
+            .removeSuffix(".")
+            .removeSuffix("!")
+
+        if (q in listOf("what time is it", "tell me the time", "current time", "time")) {
+            val time = java.text.SimpleDateFormat("h:mm a", Locale.getDefault())
+                .format(java.util.Date())
+            io.speak("The time is $time.")
+            return true
+        }
+
+        if (q in listOf("what is the date", "what's the date", "today's date", "current date", "date")) {
+            val date = java.text.SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault())
+                .format(java.util.Date())
+            io.speak("Today is $date.")
+            return true
+        }
+
+        val audio = ctx.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+
+        if (q in listOf("increase volume", "volume up", "turn up the volume")) {
+            audio.adjustStreamVolume(
+                android.media.AudioManager.STREAM_MUSIC,
+                android.media.AudioManager.ADJUST_RAISE,
+                android.media.AudioManager.FLAG_SHOW_UI
+            )
+            io.speak("Media volume increased.")
+            return true
+        }
+
+        if (q in listOf("decrease volume", "volume down", "turn down the volume")) {
+            audio.adjustStreamVolume(
+                android.media.AudioManager.STREAM_MUSIC,
+                android.media.AudioManager.ADJUST_LOWER,
+                android.media.AudioManager.FLAG_SHOW_UI
+            )
+            io.speak("Media volume decreased.")
+            return true
+        }
+
+        if (q in listOf("open settings", "open phone settings", "go to settings")) {
+            ctx.startActivity(
+                Intent(android.provider.Settings.ACTION_SETTINGS)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            io.speak("Opening Settings.")
+            return true
+        }
+
+        val youtubeSearch = Regex(
+            "^(?:open youtube and )?search(?: youtube)? for (.+)$"
+        ).find(q) ?: Regex("^search youtube for (.+)$").find(q)
+
+        if (youtubeSearch != null) {
+            val search = youtubeSearch.groupValues[1].trim()
+            val uri = Uri.parse(
+                "https://www.youtube.com/results?search_query=" + Uri.encode(search)
+            )
+            ctx.startActivity(
+                Intent(Intent.ACTION_VIEW, uri)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            io.speak("Searching YouTube for $search.")
+            return true
+        }
+
+        val openMatch = Regex("^(?:please )?(?:open|launch|start) (.+)$").find(q)
+        if (openMatch != null) {
+            val appName = openMatch.groupValues[1].removePrefix("the ").trim()
+            io.speak(openApp(appName))
+            return true
+        }
+
+        return false
     }
 
     private fun openApp(name: String): String {
