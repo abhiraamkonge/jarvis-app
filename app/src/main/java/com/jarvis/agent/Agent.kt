@@ -253,15 +253,25 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
             return true
         }
 
-        val openMatch = Regex("^(?:please )?(?:open|launch|start) (.+)$").find(q)
-        if (openMatch != null) {
-            val appName = openMatch.groupValues[1].removePrefix("the ").trim()
-            io.speak(openApp(appName))
-            return true
-        }
+        
+val openMatch = Regex("^(?:please )?(?:open|launch|start) (.+)$").find(q)
 
-        return false
+if (openMatch != null) {
+    val appName = openMatch.groupValues[1]
+        .removePrefix("the ")
+        .trim()
+
+    // Let Gemini handle multi-step commands.
+    val isCompound = Regex(
+        "\\b(and|then|after that|before that)\\b"
+    ).containsMatchIn(appName)
+
+    if (!isCompound) {
+        io.speak(openApp(appName))
+        return true
     }
+}
+
 
     private fun openApp(name: String): String {
         val pm = ctx.packageManager
@@ -277,13 +287,10 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
         val q = name.lowercase().trim()
 
         val match = apps.firstOrNull {
-            it.first.lowercase() == q
-        } ?: apps.firstOrNull {
-            it.first.lowercase().contains(q)
-        } ?: apps.firstOrNull {
-            q.contains(it.first.lowercase())
-        }
-
+    it.first.lowercase() == q
+} ?: apps.firstOrNull {
+    it.first.lowercase().contains(q)
+}
         if (match == null) {
             return "No app named '$name'. Installed apps: " +
                 apps.map { it.first }.sorted().take(60).joinToString()
