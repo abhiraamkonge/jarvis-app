@@ -36,7 +36,7 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
         }
 
         val model = Prefs.get(ctx, Prefs.MODEL, "gemini-3.5-flash-lite")
-        val maxSteps = Prefs.get(ctx, Prefs.MAX_STEPS, "25").toIntOrNull() ?: 25
+        val maxSteps = Prefs.get(ctx, Prefs.MAX_STEPS, "15").toIntOrNull() ?: 15
         val replyLang = Prefs.get(ctx, Prefs.REPLY_LANG, "English")
         val system = SYSTEM.replace("{LANG}", replyLang)
         val history = ArrayList<String>()
@@ -48,7 +48,7 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
                 return@withContext
             }
 
-            delay(900)
+            delay(250)
 
             val snap = svc.snapshot()
             var shot: String? = null
@@ -62,7 +62,7 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
             val hist = if (history.isEmpty()) {
                 "(none yet)"
             } else {
-                history.takeLast(15).joinToString("\n")
+                history.takeLast(8).joinToString("\n")
             }
 
             val prompt = buildString {
