@@ -84,11 +84,18 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
                     apiKey, model, system, prompt, shot, TOOLS
                 )
             } catch (e: Exception) {
-                io.speak(
-                    "I couldn't connect to Gemini. Please check your internet connection and try again."
-                )
-                return@withContext
-            }
+    android.util.Log.e(
+        "JarvisGemini",
+        "Gemini request failed",
+        e
+    )
+
+    io.speak(
+        "Gemini request failed. Check the application logs for the error details."
+    )
+
+    return@withContext
+}
 
             if (call.name == "done") {
                 io.speak(call.args.optString("message", "Done."))
