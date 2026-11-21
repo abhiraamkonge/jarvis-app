@@ -99,14 +99,14 @@ class MainActivity : Activity() {
 
         label("Gemini model")
         model = field(
-            "gemini-2.5-flash",
-            Prefs.get(this, Prefs.MODEL, "gemini-2.5-flash")
+            "gemini-3.5-flash-lite",
+            Prefs.get(this, Prefs.MODEL, "gemini-3.5-flash-lite")
         )
 
-        label("Speech recognition language (en-US, si-LK, ta-LK …)")
+        label("Speech recognition language (en-IN, en-US, si-LK, ta-LK …)")
         speechLang = field(
-            "en-US",
-            Prefs.get(this, Prefs.LANG, "en-US")
+            "en-IN",
+            Prefs.get(this, Prefs.LANG, "en-IN")
         )
 
         label("Reply language (English, Singlish, Sinhala …)")
@@ -202,14 +202,14 @@ class MainActivity : Activity() {
             this,
             Prefs.MODEL,
             model.text.toString().trim()
-                .ifEmpty { "gemini-2.5-flash" }
+                .ifEmpty { "gemini-3.5-flash-lite" }
         )
 
         Prefs.put(
             this,
             Prefs.LANG,
             speechLang.text.toString().trim()
-                .ifEmpty { "en-US" }
+                .ifEmpty { "en-IN" }
         )
 
         Prefs.put(
