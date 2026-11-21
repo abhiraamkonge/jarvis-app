@@ -184,9 +184,11 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
      */
     private suspend fun runOfflineCommand(goal: String): Boolean {
         val q = goal.lowercase(Locale.ROOT)
-            .trim()
-            .removeSuffix(".")
-            .removeSuffix("!")
+    .trim()
+    .removeSuffix("?")
+    .removeSuffix(".")
+    .removeSuffix("!")
+    .trim()
 
         if (q in listOf("what time is it", "tell me the time", "current time", "time")) {
             val time = java.text.SimpleDateFormat("h:mm a", Locale.getDefault())
