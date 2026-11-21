@@ -35,7 +35,7 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
             return@withContext
         }
 
-        val model = Prefs.get(ctx, Prefs.MODEL, "gemini-3.8-flash")
+        val model = Prefs.get(ctx, Prefs.MODEL, "gemini-3.5-flash-lite")
         val maxSteps = Prefs.get(ctx, Prefs.MAX_STEPS, "25").toIntOrNull() ?: 25
         val replyLang = Prefs.get(ctx, Prefs.REPLY_LANG, "English")
         val system = SYSTEM.replace("{LANG}", replyLang)
@@ -253,25 +253,26 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
             return true
         }
 
-        
-val openMatch = Regex("^(?:please )?(?:open|launch|start) (.+)$").find(q)
+        val openMatch = Regex("^(?:please )?(?:open|launch|start) (.+)$").find(q)
 
-if (openMatch != null) {
-    val appName = openMatch.groupValues[1]
-        .removePrefix("the ")
-        .trim()
+        if (openMatch != null) {
+            val appName = openMatch.groupValues[1]
+                .removePrefix("the ")
+                .trim()
 
-    // Let Gemini handle multi-step commands.
-    val isCompound = Regex(
-        "\\b(and|then|after that|before that)\\b"
-    ).containsMatchIn(appName)
+            // Let Gemini handle multi-step commands.
+            val isCompound = Regex("\\b(and|then|after that|before that)\\b")
+                .containsMatchIn(appName)
 
-    if (!isCompound) {
-        io.speak(openApp(appName))
-        return true
+            if (!isCompound) {
+                io.speak(openApp(appName))
+                return true
+            }
+        }
+
+        // Unknown or multi-step commands should continue to Gemini.
+        return false
     }
-}
-
 
     private fun openApp(name: String): String {
         val pm = ctx.packageManager
