@@ -83,10 +83,11 @@ class Agent(private val ctx: Context, private val io: AgentIO) {
                 GeminiClient.step(
                     apiKey, model, system, prompt, shot, TOOLS
                 )
-         } catch (e: Exception) {
+     } catch (e: Exception) {
     android.util.Log.e("JarvisGemini", "Gemini request failed", e)
 
-    io.speak("Gemini request failed. Check the application logs.")
+    val error = e.message ?: "Unknown error"
+    io.speak("Gemini error: $error")
     return@withContext
 }
 
